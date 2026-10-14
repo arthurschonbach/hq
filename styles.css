@@ -1,0 +1,155 @@
+/* hq — sobre, with figures where they help reading. Default theme is dark. */
+
+:root, [data-theme="dark"] {
+  --paper: #131311;
+  --ink: #e9e7e0;
+  --muted: #8e8d86;
+  --line: #262622;
+  --green: #46a472;
+  --red: #c26a5e;
+}
+
+[data-theme="light"] {
+  --paper: #fafaf8;
+  --ink: #1c1c1a;
+  --muted: #8f8e87;
+  --line: #e7e5de;
+  --green: #1e7e46;
+  --red: #b23a32;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 56px 20px 64px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+header .brand {
+  font-weight: 500; font-size: 15px; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 8px;
+}
+.mark {
+  display: inline-grid; place-items: center;
+  width: 15px; height: 15px; border-radius: 4px;
+  background: var(--ink); color: var(--paper);
+  font-size: 10px; font-weight: 500; line-height: 1;
+}
+header .meta, footer { font-size: 12px; color: var(--muted); }
+.head-right { display: flex; align-items: center; gap: 10px; }
+.status { display: flex; align-items: center; }
+.sdot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted); margin-right: 6px; flex-shrink: 0;
+}
+.sdot.open { background: var(--green); }
+
+#themeToggle {
+  display: grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: none; border: 1px solid var(--line);
+  color: var(--muted); cursor: pointer; padding: 0;
+}
+#themeToggle:hover { color: var(--ink); border-color: var(--muted); }
+#themeToggle svg { width: 15px; height: 15px; display: none; }
+[data-theme="dark"] #themeToggle .icon-sun { display: block; }
+[data-theme="light"] #themeToggle .icon-moon { display: block; }
+
+h2 {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 44px 0 4px;
+}
+h2 .sub { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+}
+a.row:hover .q { text-decoration: underline; text-underline-offset: 3px; }
+
+.name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.name .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ticker { color: var(--muted); font-size: 12px; }
+.nums { font-variant-numeric: tabular-nums; white-space: nowrap; font-feature-settings: "tnum"; }
+.nums .muted { color: var(--muted); font-size: 12px; margin-left: 10px; }
+.up { color: var(--green); }
+.down { color: var(--red); }
+.sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.q {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.qline { display: flex; gap: 16px; align-items: baseline; width: 100%; }
+.loading { color: var(--muted); font-size: 13px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+
+#chart { margin-top: 12px; }
+#chart svg { width: 100%; height: auto; display: block; }
+.caption { font-size: 11px; color: var(--muted); margin: 6px 0 2px; }
+
+/* regime strip: one wrapping hairline row of cross-asset context */
+#regime {
+  display: flex; flex-wrap: wrap; gap: 6px 20px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+}
+#regime[hidden] { display: none; }
+.ritem { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rlab { color: var(--muted); margin-right: 6px; }
+.rchg { margin-left: 6px; }
+
+/* probability hairline under each prediction row */
+.pbar {
+  display: block; height: 2px; background: var(--line);
+  border-radius: 2px; margin-top: 7px; overflow: hidden;
+}
+.pbar > span { display: block; height: 100%; background: var(--ink); opacity: 0.5; border-radius: 2px; }
+
+/* theme glyph + source tag */
+.tsvg { width: 12px; height: 12px; vertical-align: -2px; margin-right: 5px; }
+.src {
+  display: inline-block; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em;
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 1px 5px; margin-right: 6px; color: var(--muted);
+}
+
+footer {
+  margin-top: 56px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+footer a { color: inherit; }
+
+@media (max-width: 480px) {
+  body { padding: 32px 16px; }
+  .ticker { display: none; }
+}

@@ -5,11 +5,11 @@
  *   1. Go to https://dash.cloudflare.com → Workers & Pages → Create
  *   2. Click "Create Worker", paste this code, deploy
  *   3. Note the URL (e.g. https://hq-proxy.<you>.workers.dev)
- *   4. In index.html, set PROXY_URL to that URL + '/?url='
+ *   4. In js/config.js, set PROXY_URL to that URL + '/?url='
  *
  * Features:
  *   - Whitelisted API domains only
- *   - Cloudflare Cache API (60s) to avoid upstream rate-limits
+ *   - Cloudflare Cache API to avoid upstream rate-limits
  *   - Realistic User-Agent for Yahoo Finance compatibility
  */
 
@@ -30,6 +30,7 @@ const ALLOWED_API_HOSTS = [
   'query2.finance.yahoo.com',
   'gamma-api.polymarket.com',
   'clob.polymarket.com',
+  'feeds.bbci.co.uk',
 ];
 
 /* Cache TTL per host (seconds) */
@@ -38,6 +39,7 @@ const CACHE_TTL = {
   'query2.finance.yahoo.com': 120,
   'gamma-api.polymarket.com': 60,
   'clob.polymarket.com': 60,
+  'feeds.bbci.co.uk': 300,           // 5 min — world headlines
 };
 
 export default {
@@ -83,7 +85,7 @@ export default {
         method: 'GET',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-          'Accept': 'application/json,text/plain,*/*',
+          'Accept': 'application/json,text/plain,application/xml,text/xml,application/rss+xml,*/*',
           'Accept-Language': 'en-US,en;q=0.9',
         },
         cf: { cacheTtl: ttl },
