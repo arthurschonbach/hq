@@ -31,6 +31,8 @@ const ALLOWED_API_HOSTS = [
   'gamma-api.polymarket.com',
   'clob.polymarket.com',
   'feeds.bbci.co.uk',
+  'www.lemonde.fr',
+  'search.cnbc.com',
 ];
 
 /* Cache TTL per host (seconds) */
@@ -40,6 +42,8 @@ const CACHE_TTL = {
   'gamma-api.polymarket.com': 60,
   'clob.polymarket.com': 60,
   'feeds.bbci.co.uk': 300,           // 5 min — world headlines
+  'www.lemonde.fr': 300,
+  'search.cnbc.com': 300,
 };
 
 export default {
@@ -128,6 +132,7 @@ function setCorsHeaders(headers, request) {
   headers.set('Access-Control-Allow-Origin', getAllowedOrigin(request));
   headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
   headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  headers.set('Vary', 'Origin'); // allowed origin differs per caller; don't reuse across origins
 }
 
 function corsResponse(body, status, request) {

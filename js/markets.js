@@ -20,12 +20,9 @@ export async function loadMarkets() {
         const chg = prev ? ((price - prev) / prev) * 100 : 0;
         const ytd0 = meta.chartPreviousClose;
         const ytd = ytd0 ? ((price - ytd0) / ytd0) * 100 : null;
-        // Trailing-window series for the context chart: last ~22 trading days,
-        // rebased to the window start (steady year-round, moves visit to visit).
-        const step = Math.max(1, Math.floor(closes.length / 60));
-        const sampled = closes.filter((_, i) => i % step === 0);
-        if (closes.length && (closes.length - 1) % step !== 0) sampled.push(closes[closes.length - 1]);
-        const window = sampled.slice(-22); // ~last 30 calendar days
+        // Trailing-window series for the context chart: last 22 trading days
+        // (~30 calendar days), rebased to the window start.
+        const window = closes.slice(-22);
         const base = window[0];
         const series = base && window.length > 2 ? window.map((c) => ((c - base) / base) * 100) : null;
         return { price, chg, ytd, series };
@@ -42,6 +39,17 @@ export function fmtPct(v, digits) {
   return (v >= 0 ? '+' : '') + v.toFixed(digits === undefined ? 2 : digits) + '%';
 }
 
+const HOVER = window.matchMedia('(hover: hover)');
+let focused = null;
+
+function focusLine(i) {
+  focused = i;
+  document.querySelectorAll('#etfList .row').forEach((r, j) => r.classList.toggle('focus', i === j));
+  document.querySelectorAll('#chart path[data-i]').forEach((p) => {
+    p.style.opacity = i === null || p.dataset.i === String(i) ? '' : '0.15';
+  });
+}
+
 export function renderMarkets(data) {
   const el = document.getElementById('etfList');
   el.innerHTML = '';
@@ -49,6 +57,13 @@ export function renderMarkets(data) {
     const d = data[i];
     const row = document.createElement('div');
     row.className = 'row';
+    // Hover (or tap, on touch screens) isolates the row's line in the chart.
+    if (HOVER.matches) {
+      row.addEventListener('mouseenter', () => focusLine(i));
+      row.addEventListener('mouseleave', () => focusLine(null));
+    } else {
+      row.addEventListener('click', () => focusLine(focused === i ? null : i));
+    }
     const name = document.createElement('span');
     name.className = 'name';
     const dot = document.createElement('span');

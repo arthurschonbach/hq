@@ -98,8 +98,8 @@ async function fetchTheme(tag) {
       }
       let q;
       if (multi) {
-        const o = top.groupItemTitle || top.question || '';
-        q = o && o !== e.title ? e.title + ': ' + o : e.title;
+        const o = (top.groupItemTitle || top.question || '').trim();
+        q = joinTitle(e.title, o);
       } else {
         q = top.question || e.title;
       }
@@ -124,10 +124,12 @@ async function fetchTheme(tag) {
             })
           : '—';
       return {
+        id: e.id,
         q,
         yes,
         d3: null,
         vol: formatVolume(vol),
+        vol24: e.volume24hr || 0,
         end,
         token,
         theme: tag,
@@ -148,7 +150,22 @@ export async function loadPredictions() {
   const all = (
     await Promise.all(THEMES.map((t) => fetchTheme(t.id).catch(() => [])))
   ).flat();
-  return all;
+  // An event can match several themes; keep its first one.
+  const seen = new Set();
+  return all.filter((it) => !seen.has(it.id) && (seen.add(it.id), true));
+}
+
+// "US-Iran ceasefire continues through...?" + "October 22"
+//   → "US-Iran ceasefire continues through October 22?"
+function joinTitle(title, outcome) {
+  if (!outcome || outcome === title) return title;
+  if (/(\.\.\.|…)/.test(title)) return title.replace(/\s*(\.\.\.|…)\s*/, ' ' + outcome + ' ').replace(/\s+\?/, '?').trim();
+  return title + ' — ' + outcome;
+}
+
+// Big moves on thin markets are noise: weight the 3-day move by recent activity.
+function score(it) {
+  return Math.abs(it.d3 || 0) * Math.log10(10 + (it.vol24 || 0));
 }
 
 function themeLabel(id) {
@@ -160,8 +177,8 @@ export function renderPredictions(items) {
   const el = document.getElementById('predList');
   el.innerHTML = '';
   const sorted = [...items]
-    .sort((a, b) => Math.abs(b.d3 || 0) - Math.abs(a.d3 || 0))
-    .slice(0, 8);
+    .sort((a, b) => score(b) - score(a))
+    .slice(0, 6);
   sorted.forEach((it) => {
     const a = document.createElement('a');
     a.className = 'row';

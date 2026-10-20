@@ -1,7 +1,7 @@
 // hq service worker: offline app shell, always-fresh data.
 // Same-origin (shell) → cache-first, refreshed in background.
 // Cross-origin (Yahoo/Polymarket/BBC/HN) → network only, never cached.
-const VERSION = 'hq-v1';
+const VERSION = 'hq-v3';
 const SHELL = [
   './',
   './index.html',
@@ -41,15 +41,14 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (new URL(e.request.url).origin !== self.location.origin) return; // data: network only
-  e.respondWith(
-    caches.match(e.request).then(
-      (hit) =>
-        hit ||
-        fetch(e.request).then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put(e.request, copy));
-          return res;
-        }),
-    ),
-  );
+  // Stale-while-revalidate: answer from cache, refresh it for the next open.
+  const fresh = fetch(e.request).then((res) => {
+    if (res.ok) {
+      const copy = res.clone();
+      caches.open(VERSION).then((c) => c.put(e.request, copy));
+    }
+    return res;
+  });
+  e.respondWith(caches.match(e.request).then((hit) => hit || fresh));
+  e.waitUntil(fresh.catch(() => {}));
 });

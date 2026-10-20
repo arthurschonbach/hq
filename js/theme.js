@@ -6,7 +6,10 @@ export function initTheme() {
   const btn = document.getElementById('themeToggle');
   if (!btn) return;
   const current = () => root.dataset.theme || 'dark';
+  const meta = document.querySelector('meta[name="theme-color"]');
   const paint = () => {
+    // Match the phone's status bar / browser chrome to the page.
+    if (meta) meta.content = current() === 'dark' ? '#131311' : '#fafaf8';
     btn.setAttribute(
       'aria-label',
       current() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',

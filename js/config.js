@@ -15,13 +15,6 @@ export const ETF_CONFIG = [
   { name: 'Emerging Markets', ticker: 'EMIM.AS', short: 'EMIM', color: '#43a080' },
 ];
 
-export const MOCK_ETF = [
-  { price: 89.54, chg: 0.43, ytd: 5.8, series: null },
-  { price: 42.18, chg: 0.81, ytd: 9.2, series: null },
-  { price: 27.14, chg: -0.18, ytd: 3.1, series: null },
-  { price: 33.61, chg: 0.33, ytd: 2.4, series: null },
-];
-
 export const THEMES = [
   { id: 'politics', label: 'politics' },
   { id: 'ai-tech', label: 'ai & tech' },
@@ -40,19 +33,28 @@ export const THEME_TAG_MAP = {
   'science': ['science', 'space', 'spacex', 'health'],
 };
 
-export const MOCK_PRED = [
-  { q: 'GPT-5 released before July 2026?', yes: 72, d3: 6, vol: '$8.1m', end: 'Jul 2026', theme: 'ai-tech' },
-  { q: 'Bitcoin exceeds $150K in 2026?', yes: 37, d3: 8, vol: '$12.4m', end: 'Dec 2026', theme: 'economy' },
-  { q: 'Ukraine ceasefire signed in 2026?', yes: 34, d3: 4, vol: '$7.8m', end: 'Dec 2026', theme: 'geopolitics' },
-  { q: '2026 hottest year on record?', yes: 68, d3: 2, vol: '$3.1m', end: 'Dec 2026', theme: 'climate' },
-  { q: 'SpaceX Starship achieves orbital refueling?', yes: 61, d3: 5, vol: '$3.6m', end: 'Dec 2026', theme: 'science' },
-  { q: 'Republicans win 2026 Senate majority?', yes: 62, d3: 3, vol: '$4.2m', end: 'Nov 2026', theme: 'politics' },
-];
-
 // Regime strip: cross-asset context the equity ETFs can't show.
 export const REGIME_CONFIG = [
+  { label: 'CAC 40', ticker: '^FCHI', digits: 1, format: (v) => Math.round(v).toLocaleString('fr-FR') },
   { label: 'VIX', ticker: '^VIX', invert: true, digits: 1, format: (v) => v.toFixed(1) },
-  { label: '10Y', ticker: '^TNX', change: 'bps', format: (v) => v.toFixed(2) + '%' },
+  { label: 'US 10Y', ticker: '^TNX', change: 'bps', format: (v) => v.toFixed(2) + '%' },
   { label: 'EUR/USD', ticker: 'EURUSD=X', digits: 1, format: (v) => v.toFixed(3) },
   { label: 'BTC', ticker: 'BTC-USD', digits: 1, format: (v) => '$' + Math.round(v).toLocaleString('en-US') },
+];
+
+// Reading: RSS feeds merged into one time-sorted stream (HN is added in news.js).
+export const NEWS_FEEDS = [
+  // Économie first: on duplicates with "en continu", the first feed's category wins.
+  { src: 'LE MONDE', cat: 'markets', url: 'https://www.lemonde.fr/economie/rss_full.xml' },
+  { src: 'LE MONDE', cat: 'fr', url: 'https://www.lemonde.fr/rss/en_continu.xml' },
+  { src: 'BBC', cat: 'world', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { src: 'CNBC', cat: 'markets', url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114' },
+];
+
+export const NEWS_FILTERS = [
+  { id: 'all', label: 'all' },
+  { id: 'fr', label: 'france' },
+  { id: 'world', label: 'world' },
+  { id: 'markets', label: 'markets' },
+  { id: 'tech', label: 'tech' },
 ];

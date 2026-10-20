@@ -5,7 +5,7 @@ export function renderChart(data, config) {
   const cap = document.getElementById('chartCap');
   if (!el) return;
   const series = (data || [])
-    .map((d, i) => ({ values: d && d.series, color: config[i] && config[i].color }))
+    .map((d, i) => ({ i, values: d && d.series, color: config[i] && config[i].color }))
     .filter((s) => s.values && s.values.length > 2 && s.color);
   if (!series.length) {
     el.innerHTML = '';
@@ -32,7 +32,9 @@ export function renderChart(data, config) {
   const paths = series
     .map(
       (s) =>
-        '<path d="M' +
+        '<path data-i="' +
+        s.i +
+        '" d="M' +
         s.values.map((v, i) => x(i, s.values.length).toFixed(1) + ',' + y(v).toFixed(1)).join(' L') +
         '" fill="none" stroke="' +
         s.color +

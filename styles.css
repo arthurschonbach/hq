@@ -31,6 +31,9 @@ body {
   max-width: 620px;
   margin: 0 auto;
   padding: 56px 20px 64px;
+  padding:
+    calc(56px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
+    calc(64px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
   font-size: 14px;
   line-height: 1.55;
 }
@@ -48,7 +51,8 @@ header .brand {
 }
 header .meta, footer { font-size: 12px; color: var(--muted); }
 .head-right { display: flex; align-items: center; gap: 10px; }
-.status { display: flex; align-items: center; }
+.status { display: flex; align-items: center; gap: 12px; }
+.xch { display: flex; align-items: center; }
 .sdot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--muted); margin-right: 6px; flex-shrink: 0;
@@ -61,6 +65,13 @@ header .meta, footer { font-size: 12px; color: var(--muted); }
   background: none; border: 1px solid var(--line);
   color: var(--muted); cursor: pointer; padding: 0;
 }
+#refresh {
+  background: none; border: 0; padding: 6px 0; margin: -6px 0;
+  font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+#refresh:hover:not(:disabled) { color: var(--ink); }
+#refresh:disabled { cursor: default; }
+
 #themeToggle:hover { color: var(--ink); border-color: var(--muted); }
 #themeToggle svg { width: 15px; height: 15px; display: none; }
 [data-theme="dark"] #themeToggle .icon-sun { display: block; }
@@ -87,6 +98,12 @@ h2 .sub { text-transform: none; letter-spacing: 0; font-weight: 400; }
   color: inherit;
 }
 a.row:hover .q { text-decoration: underline; text-underline-offset: 3px; }
+a.row:visited .q { color: var(--muted); } /* already read */
+a.row:active { opacity: 0.6; }
+#etfList .row.focus .lbl { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--muted); }
+
+:focus-visible { outline: 1px solid var(--muted); outline-offset: 3px; border-radius: 2px; }
+button, a { -webkit-tap-highlight-color: transparent; }
 
 .name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .name .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -107,15 +124,34 @@ a.row:hover .q { text-decoration: underline; text-underline-offset: 3px; }
   -webkit-box-orient: vertical;
 }
 .qline { display: flex; gap: 16px; align-items: baseline; width: 100%; }
+/* "new since last visit" marker, inline before the headline */
+.new {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--ink); vertical-align: 2px; margin-right: 7px;
+}
+
+/* reading header: label left, quiet text filters right */
+.h2row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 44px 0 4px; }
+.h2row h2 { margin: 0; }
+#newsFilters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 12px; }
+#newsFilters button {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: 12px; color: var(--muted);
+}
+#newsFilters button:hover { color: var(--ink); }
+#newsFilters button[aria-pressed="true"] { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--muted); }
+
+#chart path { transition: opacity .15s; }
+
 .loading { color: var(--muted); font-size: 13px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 
 #chart { margin-top: 12px; }
 #chart svg { width: 100%; height: auto; display: block; }
 .caption { font-size: 11px; color: var(--muted); margin: 6px 0 2px; }
 
-/* regime strip: one wrapping hairline row of cross-asset context */
+/* regime strip: cross-asset context in an aligned grid (never a ragged wrap) */
 #regime {
-  display: flex; flex-wrap: wrap; gap: 6px 20px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 20px;
   padding: 10px 0; border-bottom: 1px solid var(--line);
   font-size: 12.5px;
 }
@@ -150,6 +186,20 @@ footer {
 footer a { color: inherit; }
 
 @media (max-width: 480px) {
-  body { padding: 32px 16px; }
-  .ticker { display: none; }
+  body {
+    padding:
+      calc(28px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+      calc(40px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+  .ticker, .status .date { display: none; }
+    #regime { grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+  footer { flex-direction: column; }
+}
+
+/* touch: bigger hit areas without changing the look */
+@media (pointer: coarse) {
+  #themeToggle { width: 34px; height: 34px; }
+  #newsFilters { gap: 0 4px; }
+  #newsFilters button { padding: 8px 5px; margin: -8px 0; }
+  #refresh { padding: 10px 0; margin: -10px 0; }
 }
