@@ -34,12 +34,17 @@ export const THEME_TAG_MAP = {
 };
 
 // Regime strip: cross-asset context the equity ETFs can't show.
+// Two rows on desktop: equities & FX, then rates. Yahoo has no euro govvies,
+// so French/German yields come from CNBC (src: 'cnbc').
+// invert: rising is risk-off (yields, spreads), so it shows red.
 export const REGIME_CONFIG = [
   { label: 'CAC 40', ticker: '^FCHI', digits: 1, format: (v) => Math.round(v).toLocaleString('fr-FR') },
-  { label: 'VIX', ticker: '^VIX', invert: true, digits: 1, format: (v) => v.toFixed(1) },
-  { label: 'US 10Y', ticker: '^TNX', change: 'bps', format: (v) => v.toFixed(2) + '%' },
   { label: 'EUR/USD', ticker: 'EURUSD=X', digits: 1, format: (v) => v.toFixed(3) },
   { label: 'BTC', ticker: 'BTC-USD', digits: 1, format: (v) => '$' + Math.round(v).toLocaleString('en-US') },
+  { label: 'OAT 10Y', src: 'cnbc', symbol: 'FR10Y-FR', change: 'bps', invert: true, format: (v) => v.toFixed(2) + '%' },
+  // France − Germany 10Y, in basis points: the market's read on French fiscal risk.
+  { label: 'OAT–Bund', src: 'cnbc', spread: ['FR10Y-FR', 'DE10Y-DE'], change: 'bp', invert: true, format: (v) => Math.round(v) + 'bp' },
+  { label: 'US 10Y', ticker: '^TNX', change: 'bps', invert: true, format: (v) => v.toFixed(2) + '%' },
 ];
 
 // Reading: RSS feeds merged into one time-sorted stream (HN is added in news.js).

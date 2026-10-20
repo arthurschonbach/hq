@@ -207,6 +207,7 @@ footer a { color: inherit; }
   .spark { width: 52px; }
   .pfig { gap: 10px; }
     #regime { grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+  #regime .ritem[data-fr] { order: 1; } /* OAT + spread share the last row */
   footer { flex-direction: column; }
 }
 

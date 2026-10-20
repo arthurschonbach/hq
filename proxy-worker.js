@@ -33,6 +33,7 @@ const ALLOWED_API_HOSTS = [
   'feeds.bbci.co.uk',
   'www.lemonde.fr',
   'search.cnbc.com',
+  'quote.cnbc.com',
 ];
 
 /* Cache TTL per host (seconds) */
@@ -44,6 +45,7 @@ const CACHE_TTL = {
   'feeds.bbci.co.uk': 300,           // 5 min — world headlines
   'www.lemonde.fr': 300,
   'search.cnbc.com': 300,
+  'quote.cnbc.com': 120,
 };
 
 export default {
