@@ -1,4 +1,5 @@
-// Predictions: one merged Polymarket list, ranked by 3-day move. No tabs.
+// Predictions: one merged Polymarket list, ranked by 3-day move, each with a
+// 14-day sparkline whose last 3 days carry the move's colour.
 import { THEMES, THEME_TAG_MAP } from './config.js';
 import { proxyJson } from './proxy.js';
 
@@ -35,20 +36,73 @@ function formatVolume(v) {
   return '$' + Math.round(v);
 }
 
-async function fetchClobDelta(tokenId) {
+const HISTORY_DAYS = 14;
+const MOVE_DAYS = 3;
+const SHOW = 6;
+
+/**
+ * 14 days of the outcome's price (3h steps) →
+ * { s: [0–100…], k: index where the 3-day window starts, a: where the data starts
+ *   within the 14 days (0 = full span; >0 = younger market), d3 }.
+ */
+async function fetchHistory(tokenId) {
   try {
+    const start = Math.floor(Date.now() / 1000) - HISTORY_DAYS * 86400;
     const url =
-      'https://clob.polymarket.com/prices-history?market=' + tokenId + '&interval=1w&fidelity=1440';
+      'https://clob.polymarket.com/prices-history?market=' + tokenId + '&startTs=' + start + '&fidelity=180';
     const data = await proxyJson(url, 8000);
     const h = data && data.history;
     if (!h || h.length < 2) return null;
-    const last = parseFloat(h[h.length - 1].p);
-    const ago = Date.now() / 1000 - 3 * 86400;
-    const ref = h.reduce((b, p) => (Math.abs(p.t - ago) < Math.abs(b.t - ago) ? p : b));
-    return Math.round((last - parseFloat(ref.p)) * 100);
+    const ago = Date.now() / 1000 - MOVE_DAYS * 86400;
+    let k = h.findIndex((p) => p.t >= ago);
+    if (k < 0) k = h.length - 1;
+    const s = h.map((p) => Math.round(parseFloat(p.p) * 1000) / 10);
+    const span = HISTORY_DAYS * 86400;
+    const a = Math.max(0, Math.min(0.95, (h[0].t - (Date.now() / 1000 - span)) / span));
+    return { s, k, a: Math.round(a * 100) / 100, d3: Math.round(s[s.length - 1] - s[k]) };
   } catch {
     return null;
   }
+}
+
+const price = (m) => {
+  try {
+    return parseFloat(JSON.parse(m.outcomePrices)[0]);
+  } catch {
+    return NaN;
+  }
+};
+
+// "US-Iran ceasefire continues through...?" + "October 22"
+//   → "US-Iran ceasefire continues through October 22?"
+function fillTitle(title, outcome) {
+  return title.replace(/\s*(\.\.\.|…)\s*/, ' ' + outcome + ' ').replace(/\s+\?/, '?').trim();
+}
+
+/**
+ * Which outcome to show for an event:
+ *  - candidates ("Who will be PM?", negRisk): the leader, plus the runner-up for context;
+ *  - ladders ("…by March 31 / June 30 / …"): the rung closest to 50%: the near-certain
+ *    first rung says nothing, the open question is where it tips;
+ *  - single market: itself.
+ */
+function pickOutcome(e, act) {
+  const named = (m) => (m.groupItemTitle || m.question || '').trim();
+  if (act.length === 1) return { m: act[0], q: act[0].question || e.title };
+  const byPrice = [...act].sort((a, b) => price(b) - price(a));
+  if (e.negRisk) {
+    const [lead, second] = byPrice;
+    return {
+      m: lead,
+      q: e.title,
+      outcome: named(lead),
+      runner: second ? { name: named(second), yes: Math.round(price(second) * 100) } : null,
+    };
+  }
+  const m = byPrice.reduce((b, x) => (Math.abs(price(x) - 0.5) < Math.abs(price(b) - 0.5) ? x : b));
+  return /(\.\.\.|…)/.test(e.title)
+    ? { m, q: fillTitle(e.title, named(m)) }
+    : { m, q: e.title, outcome: named(m) };
 }
 
 async function fetchTheme(tag) {
@@ -77,60 +131,29 @@ async function fetchTheme(tag) {
 
   const items = events
     .map((e) => {
-      const act = (e.markets || []).filter((m) => m.active && !m.closed && m.outcomePrices);
+      const act = (e.markets || []).filter(
+        (m) => m.active && !m.closed && m.outcomePrices && !Number.isNaN(price(m)),
+      );
       if (!act.length) return null;
-      const multi = e.negRisk || act.length > 3;
-      let top = act[0];
-      if (multi) {
-        top = act.reduce((best, m) => {
-          try {
-            return parseFloat(JSON.parse(m.outcomePrices)[0]) >
-              parseFloat(JSON.parse(best.outcomePrices)[0])
-              ? m
-              : best;
-          } catch {
-            return best;
-          }
-        }, act[0]);
-      } else {
-        act.sort((a, b) => (parseFloat(b.volume) || 0) - (parseFloat(a.volume) || 0));
-        top = act[0];
-      }
-      let q;
-      if (multi) {
-        const o = (top.groupItemTitle || top.question || '').trim();
-        q = joinTitle(e.title, o);
-      } else {
-        q = top.question || e.title;
-      }
-      let yes = 50;
-      try {
-        yes = Math.round(parseFloat(JSON.parse(top.outcomePrices)[0]) * 100);
-      } catch {
-        /* keep 50 */
-      }
+      const { m, q, outcome, runner } = pickOutcome(e, act);
       let token = null;
       try {
-        token = JSON.parse(top.clobTokenIds)[0];
+        token = JSON.parse(m.clobTokenIds)[0];
       } catch {
         /* no history */
       }
-      const vol = e.volume || parseFloat(top.volume) || 0;
-      const end =
-        e.endDate || top.endDate
-          ? new Date(e.endDate || top.endDate).toLocaleDateString('en', {
-              month: 'short',
-              year: 'numeric',
-            })
-          : '—';
+      const endDate = e.endDate || m.endDate;
       return {
         id: e.id,
         q,
-        yes,
+        outcome: outcome && outcome !== q ? outcome : null,
+        runner,
+        yes: Math.round(price(m) * 100),
         d3: null,
-        vol: formatVolume(vol),
+        hist: null,
+        vol: formatVolume(e.volume || parseFloat(m.volume) || 0),
         vol24: e.volume24hr || 0,
-        end,
+        end: endDate ? new Date(endDate).toLocaleDateString('en', { month: 'short', year: 'numeric' }) : null,
         token,
         theme: tag,
         url: 'https://polymarket.com/event/' + e.slug,
@@ -140,10 +163,20 @@ async function fetchTheme(tag) {
 
   await Promise.all(
     items.map(async (it) => {
-      if (it.token) it.d3 = await fetchClobDelta(it.token);
+      const h = it.token ? await fetchHistory(it.token) : null;
+      if (h) {
+        it.d3 = h.d3;
+        it.hist = { s: h.s, k: h.k, a: h.a };
+      }
+      delete it.token;
     }),
   );
   return items;
+}
+
+// Big moves on thin markets are noise: weight the 3-day move by recent activity.
+function score(it) {
+  return Math.abs(it.d3 || 0) * Math.log10(10 + (it.vol24 || 0));
 }
 
 export async function loadPredictions() {
@@ -152,20 +185,10 @@ export async function loadPredictions() {
   ).flat();
   // An event can match several themes; keep its first one.
   const seen = new Set();
-  return all.filter((it) => !seen.has(it.id) && (seen.add(it.id), true));
-}
-
-// "US-Iran ceasefire continues through...?" + "October 22"
-//   → "US-Iran ceasefire continues through October 22?"
-function joinTitle(title, outcome) {
-  if (!outcome || outcome === title) return title;
-  if (/(\.\.\.|…)/.test(title)) return title.replace(/\s*(\.\.\.|…)\s*/, ' ' + outcome + ' ').replace(/\s+\?/, '?').trim();
-  return title + ' — ' + outcome;
-}
-
-// Big moves on thin markets are noise: weight the 3-day move by recent activity.
-function score(it) {
-  return Math.abs(it.d3 || 0) * Math.log10(10 + (it.vol24 || 0));
+  return all
+    .filter((it) => !seen.has(it.id) && (seen.add(it.id), true))
+    .sort((a, b) => score(b) - score(a))
+    .slice(0, SHOW);
 }
 
 function themeLabel(id) {
@@ -173,59 +196,115 @@ function themeLabel(id) {
   return t ? t.label : id;
 }
 
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+/**
+ * Sparkline: the 14 days in a quiet line, the last 3 in the move's colour, a dot on "now".
+ * Placed on a 14-day time axis, so a younger market only fills the right part.
+ * Autoscaled, but never tighter than a 10-point band so noise doesn't look like news.
+ */
+function sparkline(hist, dir) {
+  const W = 72;
+  const H = 24;
+  const P = 2.5;
+  const { s, k } = hist;
+  const a = hist.a || 0;
+  let lo = Math.min(...s);
+  let hi = Math.max(...s);
+  if (hi - lo < 10) {
+    const mid = (hi + lo) / 2;
+    lo = Math.max(0, mid - 5);
+    hi = Math.min(100, lo + 10);
+    lo = hi - 10;
+  }
+  const x = (i) => P + (a + (i / (s.length - 1)) * (1 - a)) * (W - 2 * P);
+  const y = (v) => P + (1 - (v - lo) / (hi - lo)) * (H - 2 * P);
+  const pts = (a, b) =>
+    s
+      .slice(a, b)
+      .map((v, i) => x(a + i).toFixed(1) + ',' + y(v).toFixed(1))
+      .join(' ');
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('class', 'spark');
+  svg.setAttribute('aria-hidden', 'true');
+  const line = (points, cls) => {
+    const p = document.createElementNS(SVGNS, 'polyline');
+    p.setAttribute('points', points);
+    p.setAttribute('class', cls);
+    svg.appendChild(p);
+  };
+  line(pts(0, k + 1), 'past');
+  line(pts(k, s.length), 'recent ' + dir);
+  const dot = document.createElementNS(SVGNS, 'circle');
+  dot.setAttribute('cx', x(s.length - 1).toFixed(1));
+  dot.setAttribute('cy', y(s[s.length - 1]).toFixed(1));
+  dot.setAttribute('r', '2');
+  dot.setAttribute('class', 'now ' + dir);
+  svg.appendChild(dot);
+  return svg;
+}
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
 export function renderPredictions(items) {
-  const el = document.getElementById('predList');
-  el.innerHTML = '';
-  const sorted = [...items]
+  const root = document.getElementById('predList');
+  root.innerHTML = '';
+  [...items]
     .sort((a, b) => score(b) - score(a))
-    .slice(0, 6);
-  sorted.forEach((it) => {
-    const a = document.createElement('a');
-    a.className = 'row';
-    if (it.url) {
-      a.href = it.url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-    }
-    const wrap = document.createElement('span');
-    wrap.style.cssText = 'flex:1;min-width:0';
-    const line = document.createElement('span');
-    line.className = 'qline';
-    const q = document.createElement('span');
-    q.className = 'q';
-    q.textContent = it.q;
-    const nums = document.createElement('span');
-    nums.className = 'nums';
-    nums.textContent = it.yes + '%';
-    if (it.d3 !== null && it.d3 !== undefined) {
-      const d = document.createElement('span');
-      d.className = it.d3 > 0 ? 'up' : it.d3 < 0 ? 'down' : '';
-      d.textContent =
-        ' ' + (it.d3 > 0 ? '↑' + it.d3 : it.d3 < 0 ? '↓' + Math.abs(it.d3) : '·');
-      nums.appendChild(d);
-    }
-    const sub = document.createElement('span');
-    sub.className = 'sub';
-    const svg = iconFor(it.theme);
-    if (svg) {
-      const ic = document.createElement('span');
-      ic.innerHTML = svg;
-      sub.appendChild(ic);
-    }
-    sub.appendChild(
-      document.createTextNode(themeLabel(it.theme) + ' · ' + it.vol + ' · ' + it.end),
-    );
-    const bar = document.createElement('span');
-    bar.className = 'pbar';
-    const fill = document.createElement('span');
-    fill.style.width = Math.max(0, Math.min(100, it.yes)) + '%';
-    bar.appendChild(fill);
-    line.appendChild(q);
-    line.appendChild(nums);
-    wrap.appendChild(line);
-    wrap.appendChild(sub);
-    wrap.appendChild(bar);
-    a.appendChild(wrap);
-    el.appendChild(a);
-  });
+    .slice(0, SHOW)
+    .forEach((it) => {
+      const dir = it.d3 > 0 ? 'up' : it.d3 < 0 ? 'down' : 'flat';
+      const a = el('a', 'row pred');
+      if (it.url) {
+        a.href = it.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+      }
+
+      const text = el('span', 'ptext');
+      text.appendChild(el('span', 'q', it.q));
+      const sub = el('span', 'sub');
+      const svg = iconFor(it.theme);
+      if (svg) {
+        const ic = el('span');
+        ic.innerHTML = svg;
+        sub.appendChild(ic);
+      }
+      // The outcome the number refers to leads the line; runner-up gives the race.
+      if (it.outcome) {
+        sub.appendChild(el('span', 'outcome', it.outcome));
+        if (it.runner) sub.appendChild(document.createTextNode(' vs ' + it.runner.name + ' ' + it.runner.yes + '%'));
+        sub.appendChild(document.createTextNode(' · '));
+      } else {
+        sub.appendChild(document.createTextNode(themeLabel(it.theme) + ' · '));
+      }
+      // End date before volume: if the line runs out of room, volume is what gets cut.
+      sub.appendChild(document.createTextNode([it.end, it.vol].filter(Boolean).join(' · ')));
+      text.appendChild(sub);
+
+      const fig = el('span', 'pfig');
+      if (it.hist && it.hist.s && it.hist.s.length > 2) fig.appendChild(sparkline(it.hist, dir));
+      const nums = el('span', 'pnums');
+      nums.appendChild(el('span', 'pyes', it.yes + '%'));
+      if (it.d3 !== null && it.d3 !== undefined) {
+        const sign = it.d3 > 0 ? '+' : it.d3 < 0 ? '−' : '±';
+        nums.appendChild(el('span', 'pd3 ' + dir, sign + Math.abs(it.d3) + ' pts'));
+      }
+      fig.appendChild(nums);
+
+      const days = it.hist && it.hist.a ? Math.max(1, Math.round(HISTORY_DAYS * (1 - it.hist.a))) : HISTORY_DAYS;
+      a.title =
+        it.q + (it.outcome ? ' — ' + it.outcome : '') + ': ' + it.yes + '% chance' +
+        (it.d3 !== null && it.d3 !== undefined ? ', ' + (it.d3 > 0 ? '+' : '') + it.d3 + ' pts over 3 days' : '') +
+        ' · line: last ' + days + ' days' + (days < HISTORY_DAYS ? ' (market is new)' : '');
+      a.appendChild(text);
+      a.appendChild(fig);
+      root.appendChild(a);
+    });
 }

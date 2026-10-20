@@ -52,9 +52,8 @@ export const NEWS_FEEDS = [
 ];
 
 export const NEWS_FILTERS = [
-  { id: 'all', label: 'all' },
+  { id: 'tech', label: 'tech' }, // default
   { id: 'fr', label: 'france' },
   { id: 'world', label: 'world' },
   { id: 'markets', label: 'markets' },
-  { id: 'tech', label: 'tech' },
 ];

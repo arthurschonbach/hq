@@ -6,7 +6,6 @@ import { proxyText } from './proxy.js';
 const HN_API = 'https://hn.algolia.com/api/v1/search?tags=front_page';
 const SEEN_KEY = 'hq-last-visit';
 const FILTER_KEY = 'hq-news-filter';
-const PER_SOURCE = 3; // in "all", so no single feed floods the list
 const LIMIT = 8;
 
 // Previous visit. Pinned per tab session so reloads don't wipe the markers;
@@ -29,9 +28,9 @@ const lastVisit = (() => {
 let filter = (() => {
   try {
     const f = localStorage.getItem(FILTER_KEY);
-    return NEWS_FILTERS.some((x) => x.id === f) ? f : 'all';
+    return NEWS_FILTERS.some((x) => x.id === f) ? f : NEWS_FILTERS[0].id;
   } catch {
-    return 'all';
+    return NEWS_FILTERS[0].id;
   }
 })();
 let cache = [];
@@ -101,9 +100,7 @@ export async function loadNews(onPartial) {
 }
 
 function pick(items) {
-  if (filter !== 'all') return items.filter((n) => n.cat === filter).slice(0, LIMIT);
-  const count = {};
-  return items.filter((n) => (count[n.src] = (count[n.src] || 0) + 1) <= PER_SOURCE).slice(0, LIMIT);
+  return items.filter((n) => n.cat === filter).slice(0, LIMIT);
 }
 
 function renderFilters() {
